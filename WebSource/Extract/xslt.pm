@@ -1,6 +1,6 @@
 package WebSource::Extract::xslt;
 use strict;
-use WebSource::Parser;
+use XML::LibXML;
 use XML::LibXSLT;
 use Carp;
 use Date::Language;
@@ -59,6 +59,8 @@ sub new {
       $xsltdoc->setDocumentElement($stylesheet[0]->cloneNode(1));
       my $xslt = XML::LibXSLT->new();	
       $xslt->register_function('http://wwwsource.free.fr/ns/websource/xslt-ext','reformat-date','WebSource::Extract::xslt::reformatDate');
+      $xslt->register_function('http://wwwsource.free.fr/ns/websource/xslt-ext','string-replace','WebSource::Extract::xslt::stringReplace');
+      $xslt->register_function('http://wwwsource.free.fr/ns/websource/xslt-ext','html-lint','WebSource::Extract::xslt::htmlLint');
       $self->{xsl} = $xslt->parse_stylesheet($xsltdoc);
       $self->{format} = $wsd->getAttribute("format");
     } else {
@@ -81,26 +83,49 @@ sub handle {
     $doc->setDocumentElement($data->cloneNode(1));
     $data = $doc;
   }
-  $self->log(6,"We have : \n".$data->toString(1)."\n");
+  $self->log(6,"We have : \n".$data->toString(1,'utf-8')."\n");
+  $self->log(6,".. encoding: ".$data->ownerDocument->actualEncoding()."\n");
+  
   my $mapping = $self->{xslparams};
   my %parameters;
   foreach my $param (keys(%$mapping)) {
-    my $value = $env->{$param};
-    $self->log(2,"Found value of $param : ",$value);
+    my $origKey = $mapping->{$param};
+    my $value = $env->{$origKey};
+    $self->log(2,"Found value for $param (using $origKey) : ",$value);
     $parameters{$param} = $value;
   }
   my $result = $self->{xsl}->transform($data,XML::LibXSLT::xpath_to_string(%parameters));
   $self->{format} eq "document" or $result = $result->documentElement;
-  $self->log(6,"Produced :\n",$result->toString(1));
+  $self->log(6,"Produced :\n",$result->toString(1,'UTF-8'));
   return WebSource::Envelope->new(type => "object/dom-node", data => $result);
 }
 
-#
-# Extension function to reformat dates
-# {http://wwwsource.free.fr/ns/websource/xslt-ext}reformat-date(
-#   date, targetTemplate, sourceLanguage?
-# 
-# )
+=head1 XSLT EXTENSIONS
+
+The module implements extra pratical XSLT extension functions
+These can be used by delaring a prefix for theses extensions whose namespace
+is C<http://wwwsource.free.fr/ns/websource/xslt-ext> and declaring that this prefix is
+an extension prefix. For example:
+
+  <xsl:stylesheet
+      xmlns:wsx="http://wwwsource.free.fr/ns/websource/xslt-ext"
+      extension-element-prefixes="wsx"
+  >
+    ...
+  </xsl:stylesheet>
+
+=cut
+
+
+=head2 reformat-date
+
+Extension function to reformat dates
+{http://wwwsource.free.fr/ns/websource/xslt-ext}reformat-date(
+   date, targetTemplate, sourceLanguage?
+)
+
+=cut
+
 sub reformatDate {
   my ($srcdate,$template,@langs) = @_;
   my $dsttime = undef;
@@ -117,8 +142,37 @@ sub reformatDate {
 }
 
 
-1;
+=head2 string-replace
 
+Extension function to do a string replacement using a perl regular expression
+{http://wwwsource.free.fr/ns/websource/xslt-ext}string-replace(regexp, replacement, data)
+
+=cut
+
+sub stringReplace {
+  my ($regexp,$replace,$data) = @_;
+  $data =~ s/$regexp/$replace/g;
+  return $data;
+}
+
+=head2 parse-encoded
+
+Extension function parse-encoded which parses an encoded XML string an returns a cleaned-up version
+{http://wwwsource.free.fr/ns/websource/xslt-ext}html-lint
+
+=cut
+
+sub htmlLint {
+  my ($string) = @_;
+  my $temp = "<ws:artificial-root xmlns:ws='urn:artificial-urn'>" . $string . "</ws:artificial-root>";
+  my $parser = XML::LibXML->new( recover => 2);
+  open(TEMP,">>",'/tmp/ws-xslt.log');
+  print TEMP $temp,"\n==============================\n";
+  close(TEMP);
+  my $doc = $parser->load_xml( string => $temp);
+  my @children = $doc->documentElement->childNodes();
+  return join("\n", map { $_->toString(1,'utf-8') } @children);
+}
 
 =head1 SEE ALSO
 

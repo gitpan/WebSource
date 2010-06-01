@@ -1,7 +1,6 @@
 package WebSource::Extract;
 use strict;
 use WebSource::Parser;
-use WebSource::Queue;
 use XML::LibXSLT;
 use XML::LibXML::XPathContext;
 use Carp;
@@ -45,7 +44,7 @@ Current existing flavors include :
 
 =item regexep : extract data using a regular expression
 
-=back 2
+=back
 
 =head1 SYNOPSIS
 
@@ -67,17 +66,12 @@ sub _init_ {
     $self->{limit} = $wsd->getAttribute("limit");
   } 
   $self->{xpath} or croak "No xpath given";
-  
-#  $self->{queue} = new WebSource::Queue(directory => '/tmp/extract-queue/');
   return $self;
 }
 
 sub handle {
   my $self = shift;
   my $env = shift;
-#  my $envMem = shift;
-#  $self->{queue}->enqueue($envMem);
-#  my $env =   $self->{queue}->dequeue();
   
   $self->log(5,"Got document ",$env->{baseuri});
   if(!($env->type eq "object/dom-node")) {

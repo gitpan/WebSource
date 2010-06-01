@@ -168,7 +168,7 @@ sub temporize {
   $self->{lastrequest} = time();
 }
 
-=back 2
+=back
 
 =head1 SEE ALSO
 

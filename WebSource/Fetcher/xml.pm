@@ -54,7 +54,7 @@ sub handle {
             WebSource::Fetcher::handle($self,$env));
 }
 
-=back 2
+=back
 
 =head1 SEE ALSO
 

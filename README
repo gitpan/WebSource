@@ -20,6 +20,12 @@ a page it is given and then sends it to both "links" and "next" tasks. The
 "next" task extracts the next page url and sends it to "fetch". The "links"
 task extraction the resulting url which are returned.
 
+When a task recieves a item it processes the item and stores the result in
+an output queue. When required, items are fetched from the task's queue and
+sent to all the tasks which can be reached through an outgoing link.
+
+
+
 INSTALLATION
 
 To install this module type the following:

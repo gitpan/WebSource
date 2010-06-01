@@ -31,7 +31,7 @@ Current existing tests include :
 
 =item B<approx> : Succeeds of a given string is approximately found in the
                   input
-=back 2
+=back
 
 =head1 SYNOPSIS
 

@@ -79,21 +79,23 @@ sub handle {
     my %options;
     if($self->{forceEncoding}) {
     	$ct = decode($self->{forceEncoding},$ct);
-    } elsif($env->{encoding}) {
-        $ct = decode($env->{encoding},$ct);
     }
+    # elsif($env->{encoding}) {
+    #    $ct = decode($env->{encoding},$ct);
+    # }
     if ($env->type eq "text/html") {
     	$self->{parser}->parse_html_string($ct,\%html_options,%options);
     } else {
     	$self->{parser}->parse_string($ct,\%xml_options,%options);
     }
   };
+  $doc->setEncoding('utf-8');
   if(!$doc) {
     $self->log(1,"Couldn't parse document $base : $@");
     $self->log(3,">> here is the content <<\n",$ct,"\n");
     return ();
   }
-  my $bytes = $doc->toString(1);
+  my $bytes = $doc->toString(1,'utf-8');
   $self->log(6,"-------- parsed -------------\n" . $bytes);
   my %meta = %$env;
   return WebSource::Envelope->new(
@@ -103,7 +105,7 @@ sub handle {
            data    => $doc);
 }
 
-=back 2
+=back
 
 =head1 SEE ALSO
 

@@ -122,7 +122,7 @@ sub findext {
   return undef;
 }
 
-=back 2
+=back
 
 =head1 SEE ALSO
 

@@ -37,7 +37,7 @@ WebSource::Envelope - Container for exchanged data
 
   data is an HTTP::Request object
 
-=back 2
+=back
 
 =head1 SYNOPSIS
 

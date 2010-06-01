@@ -98,7 +98,7 @@ sub handle {
   return @res;
 }
 
-=back 2
+=back
 
 =head1 SEE ALSO
 

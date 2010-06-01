@@ -35,7 +35,7 @@ The different current types of other operators are :
 
 =item B<type>     : Filters elements based on their MIME type
 
-=back 2
+=back
 
 For more details on each type of filter see the corresponding
 WebSource::Filter::<type> man page.

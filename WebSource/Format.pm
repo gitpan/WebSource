@@ -30,7 +30,7 @@ The following formats exist :
 =item B<replace> : returns the same data with a given string (B<find> parameter)
                    replaced by an other (B<replace> parameter)
 
-=back 2
+=back
 
 The C<format> attribut of the format declaration allows to determine which
 format to use. Depending on the format different parameters are available.

@@ -22,7 +22,7 @@ use sigtrap qw(die normal-signals);
 use strict;
 use warnings;
 
-my $REVSTR = '$Revision: 1.3 $';
+my $REVSTR = '$Revision: 1.5 $';
 $REVSTR =~ m/Revision: ([^ ]+)/;
 my $REVISION = $1;
 my $VERSION = '2.3';
@@ -40,6 +40,7 @@ where option are :
   -t <template> or --template=<template> sets cache template
   -V            or --version             get version information
   -q            or --query               consider parameters as a unique query
+  -x		or --split-xml		 generate start and end xml element using the given value
 and src-options are source specific parameters
 USAGE
 }
@@ -55,6 +56,7 @@ my @optdecl = (
                  "t=s template>t",
                  "V version>V",
                  "q query>q",
+                 "x=s split-xml>x",
                );
 
 Getopt::Mixed::init(@optdecl);
@@ -62,7 +64,7 @@ Getopt::Mixed::init(@optdecl);
 my $ws = undef;
 my $mode = "normal";
 my %params;
-my $list = 0;
+my $xlist = "";
 
 my ($opt,$val) = Getopt::Mixed::nextOption;
 while(!$params{wsd} && $opt) {
@@ -75,6 +77,9 @@ while(!$params{wsd} && $opt) {
     if($opt eq "h") {
       print usage;
       exit(0);
+    }
+    if($opt eq "x") {
+      $xlist = $val;
     }
     if($opt eq "v") {
       defined($val) or $val = 3;
@@ -131,7 +136,7 @@ if($mode eq "query") {
 }
 
 while($_ = $ws->next_result) {
-  $list and print STDOUT "--------\n";
+  $xlist and print STDOUT "<$xlist>\n";
   print STDOUT $_->dataString, "\n";
-  $list and print STDOUT "--------\n";
+  $xlist and print STDOUT "</$xlist>\n";
 };

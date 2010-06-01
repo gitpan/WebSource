@@ -77,7 +77,7 @@ sub handle {
    );
 }
 
-=back 2
+=back
 
 =head1 SEE ALSO
 

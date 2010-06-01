@@ -14,7 +14,7 @@ use HTML::TreeBuilder;
     my @naseq;
     # Clean up attributes
     foreach my $a (@$attrseq) {
-      if($a =~ m#[^\w-_:]#) {
+      if($a =~ m#[^\w_:\-]#) {
         $self->{verbose} and warn "Bad attribute $a detected and removed";
       } else {
         push @naseq, ($a);
@@ -99,6 +99,21 @@ sub parse_html_string {
   $tb->parse($string);
   $tb->eof;
   return $self->SUPER::parse_string($tb->as_XML);
+}
+
+=item B<< $parser->parse_html_string($string); >>
+
+Parse an HTML string chunk and return the corresponding nods
+
+=cut
+
+sub parse_html_chunks {
+  my $self = shift;
+  my $string = shift;
+  my $tb = MyTreeBuilder->new;
+  $tb->parse($string);
+  $tb->eof;
+  return map { $self->SUPER::parse_string($tb->as_XML) } $tb->guts();
 }
 
 =head1 SEE ALSO

@@ -1,8 +1,8 @@
 package WebSource;
-our $REVSTR = '$Revision: 1.12 $';
+our $REVSTR = '$Revision: 1.13 $';
 $REVSTR =~ m/Revision: ([^ ]+)/;
 our $REVISION = $1;
-our $VERSION='2.4.3';
+our $VERSION='2.4.4';
 
 use strict;
 use Carp;
@@ -105,7 +105,7 @@ Use a generic engine with the given source description file
 
 Do not output more than max_results
 
-=back 2
+=back
 
 =cut
 
@@ -125,7 +125,8 @@ sub new {
   $param{useragent}->cookie_jar($param{cookies});
   $param{maxreqinterval} or $param{maxreqinterval} = 3;
   $param{maxtries}       or $param{maxtries} = 3;
-  $param{parser}         or $param{parser} = WebSource::Parser->new;
+  $param{parser}         or $param{parser} = XML::LibXML->new;
+#  WebSource::Parser->new;
   $param{parser}->expand_xinclude(1);
   $param{result_count} = 0;
   my $self = bless \%param, $class;
@@ -321,7 +322,7 @@ sub next_result {
   return $res;
 }
 
-=back 2
+=back
 
 =item B<< $source->parameters; >>
 
