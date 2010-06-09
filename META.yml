@@ -1,7 +1,7 @@
 --- #YAML:1.0
 name:               WebSource
-version:            2.4.4
-abstract:           giving machine access to the Web
+version:            2.4.5
+abstract:           a general data wrapping tool particularly well suited for online data
 author:
     - Benjamin Habegger <b@habegger.fr>
 license:            unknown
@@ -11,11 +11,13 @@ configure_requires:
 build_requires:
     ExtUtils::MakeMaker:  0
 requires:
-    Date::Language:  1
-    Getopt::Mixed:   0
-    LWP::UserAgent:  5
-    XML::LibXML:     1
-    XML::LibXSLT:    1
+    Date::Language:     1
+    Getopt::Mixed:      0
+    HTML::TreeBuilder:  3
+    LWP::UserAgent:     5
+    String::Approx:     3
+    XML::LibXML:        1
+    XML::LibXSLT:       1
 no_index:
     directory:
         - t

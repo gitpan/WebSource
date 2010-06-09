@@ -116,6 +116,20 @@ sub log {
     $self->{logger}->log($level, "[$class/$name] ", @_);
 }
 
+=item C<< $mod->will_log($level) >>
+
+Use this modules logger to check if a message at level
+$level will be logged. This is actually used internally. Any inheriting module is encouraged
+to use the logging facility.
+
+=cut 
+
+sub will_log {
+  my $self = shift;
+  my $level = shift;
+  return ($self->{logger} && $self->{logger}->will_log($level));
+}
+
 =item C<< $mod->set_logger($log) >>
 
 Sets the logger associated to this module
@@ -216,6 +230,7 @@ sub produce {
     $self->{__started__} = 1;
   }
 
+  defined($map{$self->{name}}) or $map{$self->{name}} = 0;
   $map{$self->{name}} >= 1 and return ();
   $map{$self->{name}} += 1;
 
@@ -246,11 +261,16 @@ sub produce {
     foreach my $c (@{$self->{consumers}}) {
       $c->push($res);
     }
+    $self->{abortIfEmpty} = 0;
     return $res;
   } else {
-    return ();
-    $self->{__started__} = 0;
-    $self->end();
+    if(!$self->{abortIfEmpty}) {
+      return ();
+      $self->{__started__} = 0;
+      $self->end();
+    } else {
+      die "No production for ".$self->{name}." with abort-if-empty marked yes\n";
+    }
   }
 }
 

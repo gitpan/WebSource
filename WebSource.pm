@@ -2,7 +2,7 @@ package WebSource;
 our $REVSTR = '$Revision: 1.13 $';
 $REVSTR =~ m/Revision: ([^ ]+)/;
 our $REVISION = $1;
-our $VERSION='2.4.4';
+our $VERSION='2.4.5';
 
 use strict;
 use Carp;
@@ -12,29 +12,31 @@ use HTTP::Cookies;
 use WebSource::Parser;
 use WebSource::Envelope;
 
-use File::Spec::Functions qw/rel2abs/;
+use File::Spec;
 
 our $NameSpace = 'http://wwwsource.free.fr/ns/websource';
 our %ModClass = (
- fetch     => 'WebSource::Fetcher',
- extract   => 'WebSource::Extract',
- filter    => 'WebSource::Filter',
- query     => 'WebSource::Query',
- format    => 'WebSource::Format',
- xmlparser => 'WebSource::XMLParser',
- cache     => 'WebSource::Cache',
- soap      => 'WebSource::Soap',
- database  => 'WebSource::DB',
- map       => 'WebSource::Map',
- dummy     => 'WebSource::Module',
- file      => 'WebSource::File',
- xmlsender => 'WebSource::XMLSender',
+ "fetch"		=> 'WebSource::Fetcher',
+ "extract"		=> 'WebSource::Extract',
+ "filter"		=> 'WebSource::Filter',
+ "query"		=> 'WebSource::Query',
+ "format"		=> 'WebSource::Format',
+ "xmlparser"	=> 'WebSource::XMLParser',
+ "cache"		=> 'WebSource::Cache',
+ "soap"			=> 'WebSource::Soap',
+ "database"		=> 'WebSource::DB',
+ "map"			=> 'WebSource::Map',
+ "dummy"		=> 'WebSource::Module',
+ "file"			=> 'WebSource::File',
+ "xmlsender" 	=> 'WebSource::XMLSender',
+ "meta-tag"		=> 'WebSource::MetaTag'
 );
 
 
 =head1 NAME
 
-WebSource - giving machine access to the Web
+WebSource - a general data wrapping tool particularly well suited for online data
+(but what data in not online in some way today ;) )
 
 =head1 DESCRIPTION
 
@@ -84,7 +86,10 @@ Existing subtask flavors are :
       This allows to define highly configurable tasks.
       I<input>   depends on external module
       I<output>  depends on external module
-
+  - B<meta-tag>
+      I<input>   anything
+      I<output>  anything (with updated meta-data)
+      
 =head1 METHODS
 
 =over 2
@@ -126,7 +131,6 @@ sub new {
   $param{maxreqinterval} or $param{maxreqinterval} = 3;
   $param{maxtries}       or $param{maxtries} = 3;
   $param{parser}         or $param{parser} = XML::LibXML->new;
-#  WebSource::Parser->new;
   $param{parser}->expand_xinclude(1);
   $param{result_count} = 0;
   my $self = bless \%param, $class;
@@ -137,26 +141,42 @@ sub new {
 sub _init {
   my $self = shift;
   my $wsd = $self->{wsd};
-  my $parser = $self->{parser};
-  my $doc;
-  if(-f $wsd) {
-    $parser->base_uri("file://" . rel2abs($wsd));
-    $doc = $parser->parse_file($wsd);
-    $parser->base_uri("");
-  } else {
-    my $resp = $self->{useragent}->get($wsd);
-    $resp->is_success or croak "Couldn't download description $wsd";
-    $parser->base_uri($wsd);
-    $doc = $parser->parse_string($resp->content);
-    $parser->base_uri("");
-  }
-  $doc or croak "Couldn't parse document $wsd";
+  my $doc = $self->load_wsd($wsd);
   $self->{wsddoc} = $doc;
+  $self->apply_imports;
+}
+
+sub load_wsd {
+	my ($self, $wsd, $base) = @_;
+ 	my $parser = $self->{parser};
+	my $doc;
+	if($base) {
+		if(-f $base) {
+			my @path = File::Spec->splitpath();
+			pop @path;
+			$base = File::Spec->catpath(@path);
+		}
+		$wsd = $base ? File::Spec->rel2abs($wsd,$base) : File::Spec->rel2abs($wsd);
+	}
+	$self->log(2,"Loading " .$wsd);
+	if(-f $wsd) {
+      	$parser->base_uri("file://" . $wsd);
+    	$doc = $parser->parse_file($wsd);
+    	$parser->base_uri("");
+	} else {
+		my $resp = $self->{useragent}->get($wsd);
+		$resp->is_success or croak "Couldn't download description $wsd";
+		$parser->base_uri($wsd);
+		$doc = $parser->parse_string($resp->content);
+		$parser->base_uri("");
+	}
+	$doc or croak "Couldn't parse document $wsd";
+	return $doc;
 }
 
 sub init {
   my $self = shift;
-
+  
   $self->apply_options;  
 
   my $wsd = $self->{wsd};
@@ -174,13 +194,20 @@ sub init {
   my %modules;
   my %forwards;
   my %feedbacks;
-  foreach my $mnode ($root->childNodes) {
+  my @nodes = $root->childNodes;
+  while (@nodes) {
+    my $mnode = shift(@nodes);
     $mnode->nodeType == 1 or next;
     $mnode->namespaceURI eq $NameSpace or next;
     my $type = $mnode->localname;
     my %params = %$self;
     my $name = $mnode->getAttribute("name");
-    if($type eq 'options') {
+    if($mnode->hasAttribute("abort-if-empty")) {
+	    $params{abortIfEmpty} = ($mnode->getAttribute("abort-if-empty") eq "yes");
+    } else {
+    	$params{abortIfEmpty} = 0;
+    }
+    if($type eq 'options' || $type eq 'include') {
       # do nothing these are handled seperately
     } elsif($type eq 'init') {
       my $uri = $mnode->getAttribute("browse");
@@ -203,8 +230,12 @@ sub init {
       if(!$@) {
         $modules{$name} = $class->new( %params,
           wsdnode => $mnode, name => $name);
-        $forwards{$name} = $mnode->getAttribute("forward-to");
-        $feedbacks{$name} = $mnode->getAttribute("feedback-to");
+        if($mnode->hasAttribute("forward-to")) {
+	        $forwards{$name} = $mnode->getAttribute("forward-to");
+        }
+        if($mnode->hasAttribute("feedback-to")) {
+	        $feedbacks{$name} = $mnode->getAttribute("feedback-to");
+        }
         $first or $first = $name;
         $last = $name;
       } else {
@@ -213,6 +244,10 @@ sub init {
     } else {
       $self->log(1,"Module named '$name' is of an unknown type '$type'");    
     }
+  }
+  
+  if(!$first) {
+  	croak("No modules defined in description file");
   }
 
   #
@@ -344,8 +379,11 @@ Returns the spec of the options translated for Getopt::Mixed
 sub option_spec {
   my $self = shift;
   my $doc = $self->{wsddoc};
+  my $xpc = XML::LibXML::XPathContext->new($doc);
+  $xpc->registerNs('ws',$NameSpace);
+  
   my @spec;
-  foreach my $onode ($doc->findnodes('/ws:source/ws:options/*')) {
+  foreach my $onode ($xpc->findnodes('/ws:source/ws:options/*')) {
     my $name = "";
     if($onode->nodeName() eq "option") {
       warn("Using option element under ws:options is deprecated. Directly use the options name as element name.");
@@ -385,7 +423,11 @@ Sets source specific option $opt to value $val
 sub set_option {
   my ($self,$opt,$val) = @_;
   $self->log(2,"Setting option $opt to value $val");
-  if(my @optnode = $self->{wsddoc}->findnodes("//ws:options")) {
+  
+  my $xpc = XML::LibXML::XPathContext->new($self->{wsddoc});
+  $xpc->registerNs('ws',$NameSpace);
+  
+  if(my @optnode = $xpc->findnodes("//ws:options")) {
     if (my @nodes = $optnode[0]->getChildrenByTagName($opt)) {
       if($nodes[0]->hasChildNodes()) {
         $nodes[0]->firstChild()->setData($val);
@@ -402,6 +444,49 @@ sub set_option {
   }
 }
 
+
+=item B<< $source->apply_imports >>
+
+Handles node of type <ws:import href="" /> by inserting nodes from the wsd file referenced by href
+into (imported document) into the current wsd document (target document).
+A node is inserted from the imported document into the target document only if a node with the same
+name does not exist in the target document.
+
+=cut
+
+sub apply_imports {
+  my ($self) = @_;
+  my $doc = $self->{wsddoc};
+  my $xpc = XML::LibXML::XPathContext->new($doc);
+  $xpc->registerNs('ws',$NameSpace);
+  
+  my @import_nodes = $xpc->findnodes("//ws:import");
+  while(@import_nodes) {
+    my $im_node  = shift @import_nodes;
+    my $im_par   = $im_node->parentNode;
+    my $im_wsd   = $im_node->getAttribute("href");
+  	$self->log(2,"Processing import of ".$im_wsd);
+    my $im_doc   = $self->load_wsd($im_wsd,$self->{wsd});
+
+    foreach my $el ($im_doc->documentElement->childNodes) {
+    	$el->nodeType == 1 or next;
+    	my $nodeType = $el->localName;
+    	if($nodeType eq 'options') {
+    		# If options have not been locally redefined import them
+    		if(!$xpc->exists('//ws:options')) {
+				$im_par->insertBefore($el,$im_node);
+			}	
+    	} else {
+	    	my $name = $el->getAttribute("name");
+			if(!$xpc->exists('//*[@name="' . $name . '"]')) {
+				$im_par->insertBefore($el,$im_node);
+			}
+    	}
+    }
+    $im_par->removeChild($im_node);
+  }
+}
+
 =item B<< $source->apply_options >>
 
 Handles node of type <ws:attribute name="aname" value="oname" /> by adding
@@ -413,8 +498,11 @@ to the parent node. The ws:attribute node is then removed.
 sub apply_options {
   my ($self) = @_;
   my $doc = $self->{wsddoc};
-  my @optnode = $doc->findnodes("//ws:options");
-  foreach my $sa ($doc->findnodes("//ws:set-attribute")) {
+  my $xpc = XML::LibXML::XPathContext->new($doc);
+  $xpc->registerNs('ws',$NameSpace);
+  
+  my @optnode = $xpc->findnodes("//ws:options");
+  foreach my $sa ($xpc->findnodes("//ws:set-attribute")) {
     my $p = $sa->parentNode;
     my $aname = $sa->getAttribute("name");
     my $oexpr = $sa->getAttribute("value-of");

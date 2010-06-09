@@ -5,11 +5,13 @@ WriteMakefile(
     'NAME'		=> 'WebSource',
     'VERSION_FROM'	=> 'WebSource.pm', # finds $VERSION
     'PREREQ_PM'		=> {
-	LWP::UserAgent	=> 5.0,
-	XML::LibXML	=> 1.0,
-	XML::LibXSLT	=> 1.0,
-	Getopt::Mixed	=> 0,
-	Date::Language	=> 1.0
+		LWP::UserAgent		=> 5.0,
+		XML::LibXML			=> 1.0,
+		XML::LibXSLT		=> 1.0,
+		Getopt::Mixed		=> 0,
+		Date::Language		=> 1.0,
+		HTML::TreeBuilder 	=> 3.0,
+		String::Approx 		=> 3.0,
 }, # e.g., Module::Name => 1.1
     'EXE_FILES'         => [ "bin/ws-query", "bin/ws-getform",
                              "bin/ws-xsl", "bin/ws-xpath", "bin/ws-tidy" ],

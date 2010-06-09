@@ -45,6 +45,19 @@ sub log {
     print STDERR ($self->{date} ? scalar(localtime) . " : " : ""), @_,"\n";
 }
 
+
+=item $logger->will_log($level);
+
+Check if a message logged at level C<$level> will be logged or not.
+This is typically to prevent processing in preperation for loggin data.
+
+=cut
+
+sub will_log {
+	my ($self,$level) = @_;
+	return ($level <= $self->{level});
+}
+
 =head1 SEE ALSO
 
 WebSource
